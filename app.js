@@ -10,7 +10,7 @@ let coefs= [ 3.13e-04,5.07e-04,7.649e-04,1.097e-03,1.512e-03,2.019e-03,2.628e-03
         1.006e-02,8.66e-03,7.365e-03,6.183e-03,5.119e-03,4.173e-03,3.344e-03,2.628e-03,2.019e-03,1.512e-03,
         1.097e-03,7.649e-04,5.07e-04,3.13e-04
 ];
-
+let processed;
  
 /*
       coefs =   coefs.map((val,idx)=>Math.round(val*1048590)); // 1048560 >> 3 = 65535
@@ -63,12 +63,13 @@ async function processWavFile(inputFilePath, outputFilePath) {
     let leftChannelIntegers = leftChannelData.map(sample => Math.round(sample * 32767));
     let rightChannelIntegers = rightChannelData.map(sample => Math.round(sample * 32767));
     ///-----process data here......
-    leftChannelIntegers=leftChannelIntegers.map(element => {
-        return element / 8;
-     });
+    processed = movingAverageFilter(leftChannelIntegers)
+    processed = processed.map(x=>Math.round(x))
+     processed = new Float32Array(processed)
+    
     ///saving:....
      // DSP3): Convert integers back to float PCM values for re-encoding
-    const leftChannelProcessed = leftChannelIntegers.map(sample => sample / 32767);
+    const leftChannelProcessed = processed.map(sample => sample / 32767);
     const rightChannelProcessed = rightChannelIntegers.map(sample => sample / 32767);
     //------------------DSP END
     // Step 3: Encode the audio data back into a WAV file
@@ -81,6 +82,26 @@ async function processWavFile(inputFilePath, outputFilePath) {
     fs.writeFileSync(outputFilePath, Buffer.from(encodedData));
     console.log(`WAV file saved as: ${outputFilePath}`);
 }
+
+function movingAverageFilter(inpData, windowSize = 64) {
+    let outData = [];
+    let sum = 0;
+    
+    // Initialize the sum for the first window
+    for (let i = 0; i < windowSize && i < inpData.length; i++) {
+        sum += inpData[i];
+        outData.push(Math.round(sum / (i + 1))); // Handle the start of the signal where fewer than 64 samples exist
+    }
+
+    // Process the rest of the data with a full window
+    for (let i = windowSize; i < inpData.length; i++) {
+        sum += inpData[i] - inpData[i - windowSize]; // Add new sample, remove the sample that falls out of the window
+        outData.push(sum / windowSize);
+    }
+
+    return outData;
+}
+
 
 function FirFilter (inpData,outData){
   let accum=new Array(64).fill(0);
@@ -106,7 +127,7 @@ function FirFilter (inpData,outData){
   }
 
       for(l=0;l < inpData.length-64; l++){
-        let result = calcOneWindow(inpData, l, coeficients);
+        let result = calcOneWindow(inpData, l, coefs);
         outData.push(result)
     }
 
