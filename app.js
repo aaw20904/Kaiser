@@ -65,7 +65,7 @@ async function processWavFile(inputFilePath, outputFilePath) {
     ///-----process data here......
     processed = movingAverageFilter(leftChannelIntegers)
     processed = processed.map(x=>Math.round(x))
-     processed = new Float32Array(processed)
+    processed = new Float32Array(processed)
     
     ///saving:....
      // DSP3): Convert integers back to float PCM values for re-encoding
